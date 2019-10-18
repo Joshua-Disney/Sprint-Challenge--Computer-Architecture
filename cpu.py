@@ -14,7 +14,7 @@ class CPU:
         self.register[7] = 0xF4
         self.SP = self.register[7]
         self.PC = 0
-        self.FL = 0
+        self.FL = [0] * 8
 
         # register[5] = IM   <------- Maaaaaaybe?
         # register[6] = IS
@@ -37,9 +37,7 @@ class CPU:
         #     print("This file is bad.")  # for stretch
         #     sys.exit(1)
         try:
-            print("try try try trying")
             with open(sys.argv[1]) as f:
-                print("Inside the file")
                 for line in f:
                     # Process comments:
                     # Ignore anything after a # symbol
@@ -72,7 +70,15 @@ class CPU:
             self.register[reg_a] *= self.register[reg_b]
         elif op == "DIV":
             self.register[reg_a] /= self.register[reg_b]
+        elif op == "CMP":
+            if self.register[reg_a] < self.register[reg_b]:
+                self.FL[5] = 1
+            elif self.register[reg_a] > self.register[reg_b]:
+                self.FL[6] = 1
+            elif self.register[reg_a] == self.register[reg_b]:
+                self.FL[7] = 1
         else:
+            print(f"ALU op: {op}")
             raise Exception("Unsupported ALU operation")
 
     def ram_read(self, MAR):
@@ -109,12 +115,16 @@ class CPU:
         POP  = 0b01000110
         PRN  = 0b01000111
         CALL = 0b01010000
+        JMP  = 0b01010100
+        JEQ  = 0b01010101
+        JNE  = 0b01010110
         LDI  = 0b10000010
         ADD  = 0b10100000
         SUB  = 0b10100001
         MUL  = 0b10100010
         DIV  = 0b10100011
         MOD  = 0b10100100 #<-------- No clue how to do this yet.  I'll have to look it up.
+        CMP  = 0b10100111
 
 
         running = True
@@ -132,20 +142,12 @@ class CPU:
                 print(self.register[operandA])
                 self.PC += 2
 
-            elif IR == MUL:
-                self.alu("MUL", operandA, operandB)
-                self.PC += 3
+            # elif IR == MUL or DIV or ADD or SUB:
+            #     self.alu(str(IR), operandA, operandB)   <----- this is something I want to come back to.
+            #     self.PC += 3
 
-            elif IR == DIV:
-                self.alu("DIV", operandA, operandB)
-                self.PC += 3
-
-            elif IR == ADD:
-                self.alu("ADD", operandA, operandB)
-                self.PC += 3
-
-            elif IR == SUB:
-                self.alu("SUB", operandA, operandB)
+            elif IR == CMP:
+                self.alu("CMP", operandA, operandB)
                 self.PC += 3
 
             elif IR == PUSH:
@@ -171,6 +173,21 @@ class CPU:
             elif IR == RET:
                 self.PC = self.ram[self.SP]
                 self.SP += 1
+
+            elif IR == JMP:
+                self.PC = self.register[operandA]
+
+            elif IR == JEQ:
+                if self.FL[7] == 1:
+                    self.PC = self.register[operandA]
+                else:
+                    self.PC += 2
+
+            elif IR == JNE:
+                if self.FL[7] == 0:
+                    self.PC = self.register[operandA]
+                else:
+                    self.PC += 2
 
             else:
                 print(f"Unknown Instruction {IR}")
